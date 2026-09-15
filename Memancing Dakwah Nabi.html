@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Memancing Ilmu Dakwah</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0288d1;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(180deg, #4fc3f7 0%, #0288d1 45%, #01579b 100%);
+            overflow: hidden;
+        }
+
+        /* Sunbeam / Kesan Cahaya Air */
+        .sunbeam {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 200%;
+            height: 100%;
+            background: radial-gradient(ellipse at top, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 70%);
+            transform: translateX(-50%);
+            pointer-events: none;
+        }
+
+        /* Top Header UI */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(5px);
+            color: white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .hud-item {
+            font-size: clamp(1rem, 2vw, 1.3rem);
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        /* Question Box - Dibuat Jelas Untuk Semua Saiz Skrin/Smartboard */
+        #question-box {
+            position: absolute;
+            top: 65px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 92%;
+            max-width: 900px;
+            background: rgba(255, 255, 255, 0.96);
+            border: 4px solid #0277bd;
+            border-radius: 20px;
+            padding: 14px 20px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.35);
+            z-index: 15;
+        }
+
+        #question-text {
+            color: #01579b;
+            font-size: clamp(1.05rem, 2.3vw, 1.45rem);
+            font-weight: 800;
+            line-height: 1.35;
+        }
+
+        /* Joran & Tali Pancing */
+        #rod-line {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 4px;
+            height: 0;
+            background-color: #fff;
+            box-shadow: 0 0 6px rgba(0,0,0,0.6);
+            z-index: 10;
+            transition: height 0.3s ease-out;
+            pointer-events: none;
+        }
+
+        #hook {
+            position: absolute;
+            bottom: -16px;
+            left: -6px;
+            width: 16px;
+            height: 20px;
+            border: 4px solid #e0e0e0;
+            border-top: none;
+            border-left: none;
+            border-radius: 0 0 10px 0;
+        }
+
+        /* Kawasan Kolam Ikan */
+        #pool {
+            position: absolute;
+            top: 150px;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+
+        /* Elemen Ikan */
+        .fish {
+            position: absolute;
+            width: 175px;
+            height: 80px;
+            cursor: pointer;
+            z-index: 12;
+            transition: transform 0.1s linear;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fish-body {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.3));
+        }
+
+        .fish-text {
+            position: relative;
+            z-index: 2;
+            color: #111;
+            font-weight: 800;
+            font-size: clamp(0.78rem, 1.3vw, 0.95rem);
+            text-align: center;
+            padding: 0 25px 0 15px;
+            line-height: 1.2;
+            text-shadow: 0px 0px 5px rgba(255,255,255,0.95), 0px 0px 2px rgba(255,255,255,1);
+            pointer-events: none;
+        }
+
+        /* Kawalan Arah Muka Ikan */
+        .fish.facing-left .fish-body {
+            transform: scaleX(-1);
+        }
+        .fish.facing-left .fish-text {
+            padding: 0 15px 0 25px;
+        }
+
+        /* Animasi Hasil Tangkapan */
+        .fish.caught-correct {
+            transition: top 0.7s ease-in, left 0.7s ease-in !important;
+        }
+        .fish.caught-wrong {
+            transition: top 0.9s ease-out, opacity 0.9s !important;
+            opacity: 0;
+            transform: rotate(180deg) !important; /* Ikan mati terbalik */
+        }
+
+        /* Animasi Air & Gelembung */
+        .bubble {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.45);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: floatUp linear infinite;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(100vh) scale(0.5); opacity: 0.2; }
+            100% { transform: translateY(-100px) scale(1.2); opacity: 0.8; }
+        }
+
+        .splash {
+            position: absolute;
+            width: 45px;
+            height: 45px;
+            border: 4px solid rgba(255,255,255,0.9);
+            border-radius: 50%;
+            animation: splashAnim 0.5s ease-out forwards;
+            pointer-events: none;
+            z-index: 18;
+        }
+
+        @keyframes splashAnim {
+            0% { transform: scale(0.2); opacity: 1; }
+            100% { transform: scale(2.6); opacity: 0; }
+        }
+
+        /* Modal / Pop-up Menu */
+        .modal {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(1, 35, 60, 0.88);
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .modal-card {
+            background: white;
+            color: #333;
+            padding: 30px 25px;
+            border-radius: 24px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+        }
+
+        .modal h1 {
+            color: #0277bd;
+            font-size: clamp(1.8rem, 4vw, 2.3rem);
+            margin-bottom: 12px;
+        }
+
+        .modal p {
+            font-size: clamp(0.95rem, 2vw, 1.1rem);
+            margin-bottom: 18px;
+            color: #444;
+            line-height: 1.5;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #4ea32a 0%, #2e7d32 100%);
+            color: white;
+            border: none;
+            padding: 14px 34px;
+            font-size: 1.25rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 6px 15px rgba(46,125,50,0.4);
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(46,125,50,0.6);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Penyesuaian Khas Paparan Skrin Kecil / Tablet */
+        @media (max-height: 650px) {
+            #question-box { top: 55px; padding: 10px 15px; }
+            #pool { top: 125px; }
+            .fish { width: 145px; height: 68px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div class="sunbeam"></div>
+
+    <!-- UI Header -->
+    <div id="ui-layer">
+        <div class="hud-item">
+            <span>Soalan:</span>
+            <span id="question-count" style="color: #ffe082;">1/15</span>
+        </div>
+        <div class="hud-item">
+            <span>Mata:</span>
+            <span id="score" style="color: #80deea;">0</span>
+        </div>
+        <div class="hud-item">
+            <span id="lives">❤️❤️❤️</span>
+        </div>
+    </div>
+
+    <!-- Question Box -->
+    <div id="question-box">
+        <div id="question-text">Memuatkan soalan...</div>
+    </div>
+
+    <!-- Fishing Line Visual -->
+    <div id="rod-line">
+        <div id="hook"></div>
+    </div>
+
+    <!-- Area Kolam Ikan -->
+    <div id="pool"></div>
+
+    <!-- Modal Mula Permainan -->
+    <div id="start-modal" class="modal">
+        <div class="modal-card">
+            <h1>🎣 Memancing Ilmu</h1>
+            <p><strong>Pelajaran Dakwah Nabi Muhammad SAW (Tahun 4)</strong></p>
+            <p>Klik / sentuh ikan yang mempunyai <strong>jawapan betul</strong> untuk memancingnya ke atas!</p>
+            <p>Jaga 3 nyawa anda dan kumpul mata tertinggi!</p>
+            <button class="btn" onclick="startGame()">Mula Memancing!</button>
+        </div>
+    </div>
+
+    <!-- Modal Tamat Permainan -->
+    <div id="end-modal" class="modal" style="display: none;">
+        <div class="modal-card">
+            <h1 id="end-title">Tahniah!</h1>
+            <p id="end-message">Anda telah berjaya menjawab soalan dakwah!</p>
+            <div style="font-size: 1.5rem; font-weight: bold; margin: 15px 0; color: #0277bd;">
+                Jumlah Markah: <span id="final-score">0</span>
+            </div>
+            <p id="achievement-text" style="font-weight: bold; color: #2e7d32; margin-bottom: 25px;"></p>
+            <button class="btn" onclick="startGame()">🔄 Main Semula</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Set 15 Soalan Rasmi
+    const masterQuestions = [
+        { q: "Apakah maksud dakwah?", options: ["Mengajak kepada kebaikan & mentaati Allah", "Mengajak manusia mencari harta", "Mengajak manusia berseronok", "Mengajak manusia berperang"], ans: 0 },
+        { q: "Apakah yang dimaksudkan dengan dakwah secara lisan?", options: ["Mengajak kebaikan melalui percakapan", "Menunjukkan kekayaan", "Bermain bersama-sama", "Berdiam diri"], ans: 0 },
+        { q: "Antara berikut, yang manakah contoh dakwah secara lisan?", options: ["Menasihati rakan menunaikan solat", "Membantu orang tua membawa barang", "Memberikan makanan kepada jiran", "Menolong rakan mengemas kelas"], ans: 0 },
+        { q: "Apakah yang dimaksudkan dengan dakwah melalui perbuatan?", options: ["Menunjukkan contoh baik melalui amalan", "Bercakap dengan kuat", "Menulis surat sahaja", "Memberikan arahan kepada orang lain"], ans: 0 },
+        { q: "Antara berikut, yang manakah contoh dakwah melalui perbuatan?", options: ["Menunjukkan akhlak baik dalam kehidupan", "Mengajak rakan membaca Al-Quran", "Memberikan ceramah", "Memberi nasihat secara lisan"], ans: 0 },
+        { q: "Mengapakah dakwah melalui perbuatan penting?", options: ["Menjadi contoh kepada orang lain", "Supaya dipuji orang", "Supaya mendapat kekayaan", "Supaya menjadi terkenal"], ans: 0 },
+        { q: "Siapakah yang menentang dakwah Nabi Muhammad SAW?", options: ["Kafir Quraisy", "Penduduk Madinah", "Kaum Ansar", "Kaum Muhajirin"], ans: 0 },
+        { q: "Apakah antara bentuk tentangan kafir Quraisy terhadap dakwah?", options: ["Fitnah", "Membantu dakwah Nabi SAW", "Memberikan hadiah", "Mengajak Nabi SAW berpindah"], ans: 0 },
+        { q: "Bagaimanakah sikap Nabi SAW ketika menghadapi tentangan kafir Quraisy?", options: ["Sabar dan tabah", "Berputus asa", "Membalas dengan kejahatan", "Berhenti berdakwah"], ans: 0 },
+        { q: "Apakah yang dilakukan Nabi SAW apabila menerima tentangan Quraisy?", options: ["Tetap sabar & meneruskan dakwah", "Membalas ejekan", "Berhenti berdakwah", "Marah kepada semua orang"], ans: 0 },
+        { q: "Apakah sifat Nabi Muhammad SAW yang perlu dicontohi ketika berdakwah?", options: ["Sabar", "Sombong", "Pemarah", "Pendendam"], ans: 0 },
+        { q: "Bagaimanakah Nabi Muhammad SAW menyampaikan dakwah?", options: ["Dengan hikmah & nasihat yang baik", "Dengan paksaan", "Dengan kekerasan", "Dengan kemarahan"], ans: 0 },
+        { q: "Apakah sikap Nabi SAW terhadap orang yang menentang dakwahnya?", options: ["Tidak berdendam", "Membalas dendam", "Menghina mereka", "Membenci semua orang"], ans: 0 },
+        { q: "Apakah akhlak Nabi SAW yang boleh diamalkan ketika mengajak kebaikan?", options: ["Berlemah lembut & berhikmah", "Memaksa rakan", "Memarahi rakan", "Mengejek rakan"], ans: 0 },
+        { q: "Ali mengajak kawannya solat dengan kata-kata yang baik. Dakwah apakah ini?", options: ["Dakwah secara lisan", "Dakwah secara perbuatan", "Dakwah secara paksaan", "Dakwah secara kekerasan"], ans: 0 }
+    ];
+
+    // Grafik SVG Ikan (4 Warna Variasi)
+    const fishSVGs = [
+        `<svg class="fish-body" viewBox="0 0 120 60"><path d="M10,30 Q30,5 70,15 T110,30 Q70,45 30,55 Z" fill="#ff7043"/><path d="M10,30 L-10,10 L-5,30 L-10,50 Z" fill="#e64a19"/><circle cx="85" cy="20" r="4" fill="#fff"/><circle cx="86" cy="20" r="2" fill="#000"/></svg>`,
+        `<svg class="fish-body" viewBox="0 0 120 60"><path d="M10,30 Q30,5 70,15 T110,30 Q70,45 30,55 Z" fill="#29b6f6"/><path d="M10,30 L-10,10 L-5,30 L-10,50 Z" fill="#0288d1"/><circle cx="85" cy="20" r="4" fill="#fff"/><circle cx="86" cy="20" r="2" fill="#000"/></svg>`,
+        `<svg class="fish-body" viewBox="0 0 120 60"><path d="M10,30 Q30,5 70,15 T110,30 Q70,45 30,55 Z" fill="#ab47bc"/><path d="M10,30 L-10,10 L-5,30 L-10,50 Z" fill="#7b1fa2"/><circle cx="85" cy="20" r="4" fill="#fff"/><circle cx="86" cy="20" r="2" fill="#000"/></svg>`,
+        `<svg class="fish-body" viewBox="0 0 120 60"><path d="M10,30 Q30,5 70,15 T110,30 Q70,45 30,55 Z" fill="#26a69a"/><path d="M10,30 L-10,10 L-5,30 L-10,50 Z" fill="#00796b"/><circle cx="85" cy="20" r="4" fill="#fff"/><circle cx="86" cy="20" r="2" fill="#000"/></svg>`
+    ];
+
+    // Status Game
+    let questions = [];
+    let currentQIndex = 0;
+    let score = 0;
+    let lives = 3;
+    let activeFish = [];
+    let isProcessingClick = false;
+    let animationFrameId;
+
+    // Web Audio Synthesizer (Kesan Bunyi terbina)
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx;
+
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new AudioContext();
+        }
+    }
+
+    function playSound(type) {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'correct') {
+            osc.frequency.setValueAtTime(440, audioCtx.currentTime); // Sound A4 -> A5
+            osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.3);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.3);
+        } else if (type === 'wrong') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 0.4);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.4);
+        }
+    }
+
+    // Mula Permainan
+    function startGame() {
+        initAudio();
+        document.getElementById('start-modal').style.display = 'none';
+        document.getElementById('end-modal').style.display = 'none';
+
+        // Rawakkan Soalan
+        questions = [...masterQuestions].sort(() => Math.random() - 0.5);
+        currentQIndex = 0;
+        score = 0;
+        lives = 3;
+        isProcessingClick = false;
+
+        updateHUD();
+        createBubbles();
+        loadQuestion();
+
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        gameLoop();
+    }
+
+    function updateHUD() {
+        document.getElementById('question-count').innerText = `${currentQIndex + 1}/${questions.length}`;
+        document.getElementById('score').innerText = score;
+        document.getElementById('lives').innerText = '❤️'.repeat(lives) + '🖤'.repeat(3 - lives);
+    }
+
+    function loadQuestion() {
+        if (currentQIndex >= questions.length || lives <= 0) {
+            endGame();
+            return;
+        }
+
+        updateHUD();
+        const qData = questions[currentQIndex];
+        document.getElementById('question-text').innerText = `Soalan ${currentQIndex + 1}: ${qData.q}`;
+
+        // Kosongkan Kolam
+        const pool = document.getElementById('pool');
+        pool.innerHTML = '';
+        activeFish = [];
+
+        // Rawakkan Pilihan Jawapan
+        let choices = qData.options.map((opt, idx) => ({ text: opt, isCorrect: idx === qData.ans }));
+        choices.sort(() => Math.random() - 0.5);
+
+        const poolWidth = pool.clientWidth;
+        const poolHeight = pool.clientHeight;
+
+        // Kelajuan Pergerakan Ikan
+        const baseSpeed = 1.1;
+
+        choices.forEach((choice, index) => {
+            const fishEl = document.createElement('div');
+            fishEl.className = 'fish';
+            fishEl.innerHTML = `${fishSVGs[index % fishSVGs.length]}<div class="fish-text">${choice.text}</div>`;
+
+            const posX = Math.random() * (poolWidth - 180);
+            const posY = Math.random() * (poolHeight - 90);
+            const vx = (Math.random() > 0.5 ? 1 : -1) * (baseSpeed + Math.random() * 0.6);
+            const vy = (Math.random() - 0.5) * 0.7;
+
+            const fishObj = {
+                el: fishEl,
+                x: posX,
+                y: posY,
+                vx: vx,
+                vy: vy,
+                isCorrect: choice.isCorrect,
+                isCaught: false
+            };
+
+            fishEl.onclick = (e) => onFishClick(fishObj, e);
+
+            pool.appendChild(fishEl);
+            activeFish.push(fishObj);
+        });
+
+        isProcessingClick = false;
+    }
+
+    // Loop Pergerakan Ikan Secara Perpasangan & Pantulan
+    function gameLoop() {
+        const pool = document.getElementById('pool');
+        const poolWidth = pool.clientWidth;
+        const poolHeight = pool.clientHeight;
+
+        activeFish.forEach(fish => {
+            if (!fish.isCaught) {
+                fish.x += fish.vx;
+                fish.y += fish.vy;
+
+                // Pantulan Dinding
+                if (fish.x <= 0) {
+                    fish.x = 0;
+                    fish.vx *= -1;
+                } else if (fish.x >= poolWidth - 175) {
+                    fish.x = poolWidth - 175;
+                    fish.vx *= -1;
+                }
+
+                if (fish.y <= 0) {
+                    fish.y = 0;
+                    fish.vy *= -1;
+                } else if (fish.y >= poolHeight - 85) {
+                    fish.y = poolHeight - 85;
+                    fish.vy *= -1;
+                }
+
+                // Haluan Muka Ikan
+                if (fish.vx < 0) {
+                    fish.el.classList.add('facing-left');
+                } else {
+                    fish.el.classList.remove('facing-left');
+                }
+
+                fish.el.style.left = `${fish.x}px`;
+                fish.el.style.top = `${fish.y}px`;
+            }
+        });
+
+        animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    // Tindakan Apabila Ikan Diklik / Dipancing
+    function onFishClick(fish, event) {
+        if (isProcessingClick || fish.isCaught) return;
+        isProcessingClick = true;
+        fish.isCaught = true;
+
+        // Efek Percikan Air
+        createSplash(event.clientX, event.clientY);
+
+        // Animasi Tali Joran Turun
+        const rodLine = document.getElementById('rod-line');
+        const poolRect = document.getElementById('pool').getBoundingClientRect();
+        const fishCenterX = fish.x + 87;
+        const fishCenterY = poolRect.top + fish.y + 40;
+
+        rodLine.style.left = `${fishCenterX}px`;
+        rodLine.style.height = `${fishCenterY}px`;
+
+        setTimeout(() => {
+            if (fish.isCorrect) {
+                // ✅ BETUL: Ikan diangkat naik ke atas
+                playSound('correct');
+                score += 10;
+                fish.el.classList.add('caught-correct');
+                fish.el.style.top = `-150px`;
+                rodLine.style.height = `0px`;
+
+                setTimeout(() => {
+                    currentQIndex++;
+                    loadQuestion();
+                }, 800);
+
+            } else {
+                // ❌ SALAH: Ikan mati & tenggelam
+                playSound('wrong');
+                lives--;
+                fish.el.classList.add('caught-wrong');
+                fish.el.style.top = `${fish.y + 130}px`;
+                rodLine.style.height = `0px`;
+
+                setTimeout(() => {
+                    if (lives <= 0) {
+                        endGame();
+                    } else {
+                        currentQIndex++;
+                        loadQuestion();
+                    }
+                }, 900);
+            }
+        }, 300);
+    }
+
+    function createSplash(x, y) {
+        const splash = document.createElement('div');
+        splash.className = 'splash';
+        splash.style.left = `${x - 22}px`;
+        splash.style.top = `${y - 22}px`;
+        document.body.appendChild(splash);
+        setTimeout(() => splash.remove(), 500);
+    }
+
+    function createBubbles() {
+        const pool = document.getElementById('pool');
+        for (let i = 0; i < 10; i++) {
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            const size = Math.random() * 18 + 8;
+            bubble.style.width = `${size}px`;
+            bubble.style.height = `${size}px`;
+            bubble.style.left = `${Math.random() * 100}%`;
+            bubble.style.animationDuration = `${Math.random() * 4 + 4}s`;
+            bubble.style.animationDelay = `${Math.random() * 3}s`;
+            pool.appendChild(bubble);
+        }
+    }
+
+    function endGame() {
+        cancelAnimationFrame(animationFrameId);
+        const endModal = document.getElementById('end-modal');
+        const endTitle = document.getElementById('end-title');
+        const endMsg = document.getElementById('end-message');
+        const achText = document.getElementById('achievement-text');
+
+        document.getElementById('final-score').innerText = score;
+
+        if (lives > 0) {
+            endTitle.innerText = "🎉 Tahniah! Anda Hebat Berdakwah!";
+            endMsg.innerText = "Semua soalan telah berjaya dijawab dengan baik!";
+            if (score >= 130) {
+                achText.innerText = "Pencapaian: 🌟 Da'i Cilik Cemerlang!";
+            } else {
+                achText.innerText = "Pencapaian: 👍 Da'i Cilik Baik!";
+            }
+        } else {
+            endTitle.innerText = "💥 Permainan Tamat";
+            endMsg.innerText = "Nyawa anda telah habis. Teruskan berusaha dan cuba lagi!";
+            achText.innerText = "Pencapaian: 🌱 Teruskan Usaha Mempelajari Ilmu Dakwah!";
+        }
+
+        endModal.style.display = 'flex';
+    }
+</script>
+</body>
+</html>
